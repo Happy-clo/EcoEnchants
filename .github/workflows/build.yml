@@ -32,13 +32,16 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
          name: EcoEnchants
-         path: home/runner/work/
+         path: build/libs/
+      - name: Set Short SHA
+        id: short-sha
+        run: echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_ENV
       - name: automatic releases
         uses: marvinpinto/action-automatic-releases@v1.2.1
         with:
          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-         automatic_release_tag: "latest"
+         automatic_release_tag: "${{ env.SHORT_SHA }}"
          prerelease: false
-         title: "EcoEnchants 自动构建最新版本"
+         title: "EcoEnchants-${GITHUB_SHA::8} 自动构建版本"
          files: |
-           build/libs/
+           build/libs/*
