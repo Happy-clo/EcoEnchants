@@ -42,6 +42,6 @@ jobs:
          repo_token: "${{ secrets.GITHUB_TOKEN }}"
          automatic_release_tag: "${{ env.SHORT_SHA }}"
          prerelease: false
-         title: "EcoEnchants-${GITHUB_SHA::8} 自动构建版本"
+         title: "EcoEnchants-${{ env.SHORT_SHA }} Automatic build version"
          files: |
            build/libs/*
