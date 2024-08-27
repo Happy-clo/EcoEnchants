@@ -1,0 +1,41 @@
+name: Build
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Java and Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          java-version: '17'
+
+      - name: Build Project
+        run: ./gradlew build
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: EcoEnchants
+          path: build/libs/
+
+      - name: Set Short SHA
+        id: short-sha
+        run: echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_ENV
+
+      - name: Create Automatic Release
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "${{ env.SHORT_SHA }}"
+          title: "EcoEnchants-${{ env.SHORT_SHA }} Automatic build version"
+          files: build/libs/*
