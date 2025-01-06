@@ -1,37 +1,29 @@
-package com.willfp.ecoenchants.proxy.v1_21
+package com.willfp.ecoenchants.proxy.v1_21_3
 
 import com.willfp.ecoenchants.enchant.EcoEnchant
 import com.willfp.ecoenchants.enchant.EcoEnchants
 import com.willfp.ecoenchants.enchant.impl.EcoEnchantBase
 import com.willfp.ecoenchants.enchant.registration.modern.ModernEnchantmentRegistererProxy
-import com.willfp.ecoenchants.proxy.v1_21.registration.EcoEnchantsCraftEnchantment
-import com.willfp.ecoenchants.proxy.v1_21.registration.ModifiedVanillaCraftEnchantment
-import com.willfp.ecoenchants.proxy.v1_21.registration.vanillaEcoEnchantsEnchantment
-import com.willfp.ecoenchants.setStaticFinal
-import io.papermc.paper.registry.PaperRegistryAccess
-import io.papermc.paper.registry.RegistryAccess
-import io.papermc.paper.registry.RegistryKey
-import io.papermc.paper.registry.WritableCraftRegistry
+import com.willfp.ecoenchants.proxy.v1_21_3.registration.EcoEnchantsCraftEnchantment
+import com.willfp.ecoenchants.proxy.v1_21_3.registration.ModifiedVanillaCraftEnchantment
+import com.willfp.ecoenchants.proxy.v1_21_3.registration.vanillaEcoEnchantsEnchantment
 import net.minecraft.core.Holder
 import net.minecraft.core.MappedRegistry
 import net.minecraft.core.Registry
-import net.minecraft.core.RegistrySynchronization
 import net.minecraft.core.registries.Registries
-import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.item.enchantment.Enchantments
 import org.bukkit.Bukkit
 import org.bukkit.NamespacedKey
 import org.bukkit.craftbukkit.CraftRegistry
 import org.bukkit.craftbukkit.CraftServer
 import org.bukkit.craftbukkit.util.CraftNamespacedKey
 import org.bukkit.enchantments.Enchantment
-import java.util.HashMap
+import java.lang.reflect.Modifier
 import java.util.IdentityHashMap
 import java.util.function.BiFunction
 
 private val enchantmentRegistry =
-    (Bukkit.getServer() as CraftServer).server.registryAccess().registryOrThrow(Registries.ENCHANTMENT)
+    (Bukkit.getServer() as CraftServer).server.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
 
 @Suppress("DEPRECATION")
 private val bukkitRegistry =
@@ -41,6 +33,11 @@ class ModernEnchantmentRegisterer : ModernEnchantmentRegistererProxy {
     private val frozenField = MappedRegistry::class.java
         .declaredFields
         .filter { it.type.isPrimitive }[0]
+        .apply { isAccessible = true }
+
+    private val allTags = MappedRegistry::class.java
+        .declaredFields
+        .filter { it.type.name.contains("TagSet") }[0]
         .apply { isAccessible = true }
 
     private val unregisteredIntrusiveHoldersField = MappedRegistry::class.java
@@ -90,6 +87,21 @@ class ModernEnchantmentRegisterer : ModernEnchantmentRegistererProxy {
             IdentityHashMap<net.minecraft.world.item.enchantment.Enchantment,
                     Holder.Reference<net.minecraft.world.item.enchantment.Enchantment>>()
         )
+
+        /*
+        Creating an unbound tag set requires using reflection because the inner class is
+        package-private, so we just find the method manually.
+         */
+
+        val unboundTagSet = MappedRegistry::class.java
+            .declaredClasses[0]
+            .declaredMethods
+            .filter { Modifier.isStatic(it.modifiers) }
+            .filter { it.parameterCount == 0 }[0]
+            .apply { isAccessible = true }
+            .invoke(null)
+
+        allTags.set(enchantmentRegistry, unboundTagSet)
     }
 
     override fun register(enchant: EcoEnchantBase): Enchantment {
@@ -99,8 +111,8 @@ class ModernEnchantmentRegisterer : ModernEnchantmentRegistererProxy {
         if (enchantmentRegistry.containsKey(CraftNamespacedKey.toMinecraft(enchant.enchantmentKey))) {
             val nms = enchantmentRegistry[CraftNamespacedKey.toMinecraft(enchant.enchantmentKey)]
 
-            if (nms != null) {
-                return EcoEnchantsCraftEnchantment(enchant, nms)
+            if (nms.isPresent) {
+                return EcoEnchantsCraftEnchantment(enchant, nms.get().value())
             } else {
                 throw IllegalStateException("Enchantment ${enchant.id} wasn't registered")
             }

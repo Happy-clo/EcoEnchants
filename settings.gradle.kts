@@ -3,7 +3,6 @@ pluginManagement {
         gradlePluginPortal()
         mavenLocal()
         maven("https://repo.auxilor.io/repository/maven-public/")
-        maven("https://repo.papermc.io/repository/maven-public/")
     }
 }
 
@@ -27,3 +26,5 @@ include(":eco-core:core-nms:v1_20_R1")
 include(":eco-core:core-nms:v1_20_R2")
 include(":eco-core:core-nms:v1_20_R3")
 include(":eco-core:core-nms:v1_21")
+include(":eco-core:core-nms:v1_21_3")
+include(":eco-core:core-nms:v1_21_4")
